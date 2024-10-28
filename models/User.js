@@ -29,42 +29,42 @@ const userSchema = mongoose.Schema({
   },
 });
 
-userSchema.pre("save", function (next) {
+userSchema.pre("save", async function (next) {
   //비밀번호를 암호화 시킨다.
   let user = this;
 
   if (user.isModified("password")) {
-    bcrypt.genSalt(saltRounds, function (err, salt) {
-      if (err) return next(err);
-      bcrypt.hash(user.password, salt, function (err, hash) {
-        if (err) return next;
-        user.password = hash;
-        next();
-      });
-    });
+    try {
+      const salt = await bcrypt.genSalt(saltRounds);
+      user.password = await bcrypt.hash(user.password, salt);
+      next();
+    } catch (err) {
+      return next(err);
+    }
   } else {
     next();
   }
 });
 
-userSchema.methods.comparePassword = function (plainPassword, cb) {
-  bcrypt.compare(plainPassword, this.password, function (err, isMatch) {
-    if (err) return cb(err);
-    cb(null, isMatch);
-  });
+userSchema.methods.comparePassword = async function (plainPassword) {
+  try {
+    const isMatch = await bcrypt.compare(plainPassword, this.password);
+    return isMatch;
+  } catch (err) {
+    return Promise.reject(err);
+  }
 };
 
-userSchema.methods.generateToken = function (cb) {
+userSchema.methods.generateToken = async function () {
   // 토큰 생성
   let user = this;
-  var token = jwt.sign(user_id, "secretToken");
-  user.token = token;
-  user
-    .save()
-    .then(() => {
-      cb(null, user);
-    })
-    .catch((err) => cb(err));
+  user.token = jwt.sign(user._id.toHexString(), "secretToken");
+  try {
+    await user.save();
+    return user;
+  } catch (err) {
+    return Promise.reject(err);
+  }
 };
 
 const User = mongoose.model("User", userSchema);
