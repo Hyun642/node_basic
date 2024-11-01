@@ -3,6 +3,7 @@ const app = express();
 const port = 3001;
 
 const { User } = require("./models/User");
+const { auth } = require("./middleware/auth");
 const config = require("./config/key");
 const cookieParser = require("cookie-parser");
 
@@ -20,7 +21,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.post("/register", async (req, res) => {
+app.post("/api/register", async (req, res) => {
   //회원 가입 시 필요한 정보를 클라이언트에서
   //가져오면 db에 넣기
 
@@ -34,7 +35,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/api/login", async (req, res) => {
   try {
     //db에서 메일 찾기
     const user = await User.findOne({ email: req.body.email });
@@ -51,7 +52,7 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ loginSuccess: false, message: "비번이 틀렸습니다." });
 
     const userToken = await user.generateToken();
-    await res
+    res
       .cookie("x_auth", userToken.token)
       .status(200)
       .json({ loginSuccess: true, userId: user._id });
@@ -59,6 +60,8 @@ app.post("/login", async (req, res) => {
     return res.status(500).send(err);
   }
 });
+
+app.get("/api/users/auth", auth, (req, res) => {});
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
